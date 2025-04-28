@@ -109,8 +109,9 @@ runs:
         
         # Setup targets based on platform
         if [ "$PLATFORM" = "ios" ] || [ "$PLATFORM" = "all" ]; then
-          echo "Setting up iOS target"
+          echo "Setting up iOS targets"
           rustup target add aarch64-apple-ios
+          rustup target add aarch64-apple-ios-sim
         fi
         
         if [ "$PLATFORM" = "android" ] || [ "$PLATFORM" = "all" ]; then
