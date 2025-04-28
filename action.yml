@@ -1,0 +1,100 @@
+name: 'Dioxus Build Action'
+description: 'Build Dioxus applications with WASM support'
+inputs:
+  rust-version:
+    description: 'Rust version to use'
+    required: false
+    default: 'stable'
+  version:
+    description: 'Dioxus CLI version to install (or branch/tag when using custom repo)'
+    required: false
+    default: 'latest'
+  repo:
+    description: 'GitHub repository to install Dioxus CLI from (format: owner/repo)'
+    required: false
+    default: 'dioxuslabs/dioxus'
+  build-command:
+    description: 'Custom build command (defaults to "dx build --release")'
+    required: false
+    default: 'dx build --release'
+  working-directory:
+    description: 'Directory containing the Dioxus project'
+    required: false
+    default: '.'
+  cache:
+    description: 'Whether to cache dependencies (true/false)'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ inputs.rust-version }}
+        override: true
+        target: wasm32-unknown-unknown
+
+    - name: Cache Rust dependencies
+      if: inputs.cache == 'true'
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Cache Dioxus CLI
+      if: inputs.cache == 'true'
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/bin/dx
+        key: ${{ runner.os }}-dioxus-cli-${{ inputs.repo }}-${{ inputs.version }}
+
+    - name: Install Dioxus CLI
+      shell: bash
+      run: |
+        # Check if dx is already installed from cache
+        if [ "${{ inputs.cache }}" = "true" ] && command -v dx &> /dev/null; then
+          echo "Dioxus CLI found in cache"
+        else
+          if [ "${{ inputs.repo }}" = "dioxuslabs/dioxus" ]; then
+            # Install from crates.io
+            if [ "${{ inputs.version }}" = "latest" ]; then
+              cargo install dioxus-cli
+            else
+              cargo install dioxus-cli --version ${{ inputs.version }}
+            fi
+          else
+            # Install from GitHub repository
+            REPO="${{ inputs.repo }}"
+            VERSION="${{ inputs.version }}"
+            
+            if [ "$VERSION" = "latest" ]; then
+              # Install from default branch
+              cargo install --git "https://github.com/${REPO}" dioxus-cli
+            elif [[ "$VERSION" == v* ]] || [[ "$VERSION" =~ ^[0-9] ]]; then
+              # Looks like a version tag
+              cargo install --git "https://github.com/${REPO}" dioxus-cli --tag "$VERSION"
+            else
+              # Treat as a branch name
+              cargo install --git "https://github.com/${REPO}" dioxus-cli --branch "$VERSION"
+            fi
+          fi
+        fi
+
+    - name: Install wasm-opt
+      shell: bash
+      run: |
+        curl -L https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-linux.tar.gz | tar xz
+        sudo cp binaryen-version_111/bin/wasm-opt /usr/local/bin/
+
+    - name: Build Dioxus App
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
