@@ -40,8 +40,8 @@ jobs:
         id: latest_tag
         run: |
           echo "::group::Finding latest tag"
-          # Get the latest tag or set to v0.1.0 if none exists
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
+          # Get the latest tag or set to v0.0.0 if none exists
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "Latest tag: $LATEST_TAG"
           echo "::endgroup::"
