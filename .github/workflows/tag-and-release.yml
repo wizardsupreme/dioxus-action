@@ -7,6 +7,7 @@ on:
 
 jobs:
   tag-and-release:
+    name: Tag and Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -16,9 +17,10 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Determine version bump
+      - name: 📊 Determine version bump
         id: bump
         run: |
+          echo "::group::Determining version bump type"
           # Get the latest commit message
           COMMIT_MSG=$(git log -1 --pretty=%B)
           
@@ -32,18 +34,22 @@ jobs:
           fi
           
           echo "Determined bump type: $(cat $GITHUB_OUTPUT | grep BUMP_TYPE | cut -d= -f2)"
+          echo "::endgroup::"
       
-      - name: Get latest tag
+      - name: 🏷️ Get latest tag
         id: latest_tag
         run: |
+          echo "::group::Finding latest tag"
           # Get the latest tag or set to v0.0.0 if none exists
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "Latest tag: $LATEST_TAG"
+          echo "::endgroup::"
       
-      - name: Calculate new version
+      - name: 🧮 Calculate new version
         id: version
         run: |
+          echo "::group::Calculating new version"
           LATEST_TAG="${{ steps.latest_tag.outputs.LATEST_TAG }}"
           BUMP_TYPE="${{ steps.bump.outputs.BUMP_TYPE }}"
           
@@ -69,9 +75,11 @@ jobs:
           NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
+          echo "::endgroup::"
       
-      - name: Create and push tag
+      - name: 📌 Create and push tag
         run: |
+          echo "::group::Creating and pushing tag"
           NEW_VERSION="${{ steps.version.outputs.NEW_VERSION }}"
           BUMP_TYPE="${{ steps.bump.outputs.BUMP_TYPE }}"
           
@@ -83,32 +91,50 @@ jobs:
           git push https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $NEW_VERSION
           
           echo "Created and pushed tag: $NEW_VERSION"
+          echo "::endgroup::"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Create GitHub Release
+      - name: 📝 Create GitHub Release
         run: |
+          echo "::group::Creating GitHub Release"
           NEW_VERSION="${{ steps.version.outputs.NEW_VERSION }}"
+          BUMP_TYPE="${{ steps.bump.outputs.BUMP_TYPE }}"
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          # Create release notes with commit message conventions
+          RELEASE_NOTES="Release $NEW_VERSION of Dioxus Build Action ($BUMP_TYPE bump)
+          
+          ## What's Changed
+          $COMMIT_MSG
+          
+          ## Commit Message Conventions
+          - \`BREAKING CHANGE:\` or \`MAJOR:\` - Major version bump (x.0.0)
+          - \`FEAT:\`, \`FEATURE:\`, or \`MINOR:\` - Minor version bump (0.x.0)
+          - Any other prefix - Patch version bump (0.0.x)
+          
+          For full changes, see the [commit history](https://github.com/${{ github.repository }}/commits/$NEW_VERSION)"
           
           gh release create $NEW_VERSION \
             --title "Release $NEW_VERSION" \
-            --notes "Release $NEW_VERSION of Dioxus Build Action
-            
-            ## What's Changed
-            $(git log -1 --pretty=%B)
-            
-            For full changes, see the [commit history](https://github.com/${{ github.repository }}/commits/$NEW_VERSION)"
+            --notes "$RELEASE_NOTES"
+          echo "::endgroup::"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Update major version tag
+      - name: 🔄 Update major version tag
         run: |
+          echo "::group::Updating major version tag"
           NEW_VERSION="${{ steps.version.outputs.NEW_VERSION }}"
           MAJOR_VERSION=$(echo $NEW_VERSION | cut -d. -f1)
+          
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
           
           git tag -f $MAJOR_VERSION $NEW_VERSION
           git push -f https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $MAJOR_VERSION
           
           echo "Updated major version tag: $MAJOR_VERSION -> $NEW_VERSION"
+          echo "::endgroup::"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
