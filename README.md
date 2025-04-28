@@ -58,9 +58,14 @@ Different platforms have different requirements:
 ### Web (Default)
 ```yaml
 - name: Build Dioxus Web App
-  uses: wizardsupreme/dioxus-action@v1
+  uses: wizardsupreme/dioxus-action@v0
   with:
     platform: 'web'
+```
+OR
+```yaml
+- name: Build Dioxus Web App
+  uses: wizardsupreme/dioxus-action@v0
 ```
 
 ### iOS
@@ -72,7 +77,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Build Dioxus iOS App
-        uses: wizardsupreme/dioxus-action@v1
+        uses: wizardsupreme/dioxus-action@v0
         with:
           platform: 'ios'
 ```
@@ -80,7 +85,7 @@ jobs:
 ### Android
 ```yaml
 - name: Build Dioxus Android App
-  uses: wizardsupreme/dioxus-action@v1
+  uses: wizardsupreme/dioxus-action@v0
   with:
     platform: 'android'
 ```
@@ -88,7 +93,7 @@ jobs:
 ### Desktop
 ```yaml
 - name: Build Dioxus Desktop App
-  uses: wizardsupreme/dioxus-action@v1
+  uses: wizardsupreme/dioxus-action@v0
   with:
     platform: 'desktop'
 ```
@@ -102,7 +107,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Build Dioxus for All Platforms
-        uses: wizardsupreme/dioxus-action@v1
+        uses: wizardsupreme/dioxus-action@v0
         with:
           platform: 'all'
 ```
@@ -125,7 +130,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Build Dioxus App
-        uses: wizardsupreme/dioxus-action@v1
+        uses: wizardsupreme/dioxus-action@v0
         with:
           repo: 'wizardsupreme/dioxus'
           version: 'feature-branch'
@@ -148,7 +153,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Build Dioxus iOS App
-        uses: wizardsupreme/dioxus-action@v1
+        uses: wizardsupreme/dioxus-action@v0
         with:
           ios-support: 'true'
           build-command: 'dx build --release --features ios'

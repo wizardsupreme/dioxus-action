@@ -33,6 +33,10 @@ inputs:
     description: 'Target platform (web, ios, android, desktop, or all)'
     required: false
     default: 'web'
+  features:
+    description: 'Cargo features to enable (comma-separated)'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -129,6 +133,7 @@ runs:
       run: |
         PLATFORM="${{ inputs.platform }}"
         BUILD_CMD="${{ inputs.build-command }}"
+        FEATURES="${{ inputs.features }}"
         
         if [ "$PLATFORM" = "web" ]; then
           $BUILD_CMD --platform web
@@ -151,4 +156,11 @@ runs:
         # Check if --release is already in the build command
         if [[ "$BUILD_CMD" != *"--release"* ]]; then
           BUILD_CMD="$BUILD_CMD --release"
+        fi
+        
+        # Add features if specified
+        if [ -n "$FEATURES" ]; then
+          if [[ "$BUILD_CMD" != *"--features"* ]]; then
+            BUILD_CMD="$BUILD_CMD --features $FEATURES"
+          fi
         fi
