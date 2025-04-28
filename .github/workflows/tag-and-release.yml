@@ -100,14 +100,77 @@ jobs:
           echo "::group::Creating GitHub Release"
           NEW_VERSION="${{ steps.version.outputs.NEW_VERSION }}"
           BUMP_TYPE="${{ steps.bump.outputs.BUMP_TYPE }}"
-          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          # Get all commits since the last tag
+          LATEST_TAG="${{ steps.latest_tag.outputs.LATEST_TAG }}"
+          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s%n%b%n---")
+          
+          # Extract conventional commits and their details
+          CHANGES=""
+          CURRENT_COMMIT=""
+          COMMIT_DETAILS=""
+          READING_DETAILS=false
+          
+          while IFS= read -r line; do
+            if [[ "$line" == "---" ]]; then
+              # End of a commit
+              if [[ "${CURRENT_COMMIT,,}" =~ ^(breaking change:|major:|feat:|feature:|minor:|fix:|patch:|chore:|docs:|style:|refactor:|perf:|test:|build:|ci:) ]]; then
+                # Extract commit type and standardize it
+                COMMIT_TYPE=$(echo "$CURRENT_COMMIT" | grep -io "^[a-zA-Z ]*:" | tr '[:lower:]' '[:upper:]')
+                COMMIT_MSG=$(echo "$CURRENT_COMMIT" | sed -E "s/^[a-zA-Z ]*://i" | sed -e 's/^[[:space:]]*//')
+                
+                # Format the commit message
+                FORMATTED_COMMIT="**${COMMIT_TYPE}** ${COMMIT_MSG}"
+                
+                if [[ -n "$COMMIT_DETAILS" ]]; then
+                  CHANGES+="### ${FORMATTED_COMMIT}\n${COMMIT_DETAILS}\n\n"
+                else
+                  CHANGES+="- ${FORMATTED_COMMIT}\n"
+                fi
+              fi
+              CURRENT_COMMIT=""
+              COMMIT_DETAILS=""
+              READING_DETAILS=false
+            elif [[ -z "$CURRENT_COMMIT" ]]; then
+              # First line of commit is the title
+              CURRENT_COMMIT="$line"
+              READING_DETAILS=true
+            elif [[ "$READING_DETAILS" == true && -n "$line" ]]; then
+              # Subsequent non-empty lines are details
+              if [[ -n "$COMMIT_DETAILS" ]]; then
+                COMMIT_DETAILS+="  $line\n"
+              else
+                COMMIT_DETAILS="  $line\n"
+              fi
+            fi
+          done <<< "$COMMITS"
+          
+          # If no conventional commits found, use the PR title
+          if [[ -z "$CHANGES" ]]; then
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            if [[ "$COMMIT_MSG" == *"Merge pull request"* ]]; then
+              # Extract the PR title from merge message (after the PR number line)
+              CLEAN_MSG=$(echo "$COMMIT_MSG" | grep -v "Merge pull request" | grep -v "^$" | head -n 1)
+              
+              # Check if PR title follows convention
+              if [[ "${CLEAN_MSG,,}" =~ ^(breaking change:|major:|feat:|feature:|minor:|fix:|patch:|chore:|docs:|style:|refactor:|perf:|test:|build:|ci:) ]]; then
+                # Extract commit type and standardize it
+                COMMIT_TYPE=$(echo "$CLEAN_MSG" | grep -io "^[a-zA-Z ]*:" | tr '[:lower:]' '[:upper:]')
+                COMMIT_MSG=$(echo "$CLEAN_MSG" | sed -E "s/^[a-zA-Z ]*://i" | sed -e 's/^[[:space:]]*//')
+                CHANGES="- **${COMMIT_TYPE}** ${COMMIT_MSG}\n"
+              else
+                CHANGES="- ${CLEAN_MSG}\n"
+              fi
+            else
+              CHANGES="- ${COMMIT_MSG}\n"
+            fi
+          fi
           
           # Create release notes with commit message conventions
           RELEASE_NOTES="Release $NEW_VERSION of Dioxus Build Action ($BUMP_TYPE bump)
           
           ## What's Changed
-          $COMMIT_MSG
-          
+          ${CHANGES}
           ## Commit Message Conventions
           - \`BREAKING CHANGE:\` or \`MAJOR:\` - Major version bump (x.0.0)
           - \`FEAT:\`, \`FEATURE:\`, or \`MINOR:\` - Minor version bump (0.x.0)
