@@ -122,26 +122,33 @@ runs:
           echo "Web target already set up (wasm32-unknown-unknown)"
         fi
 
+    # Build for the specified platform
     - name: Build Dioxus App
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
         PLATFORM="${{ inputs.platform }}"
+        BUILD_CMD="${{ inputs.build-command }}"
         
         if [ "$PLATFORM" = "web" ]; then
-          ${{ inputs.build-command }} --platform web
+          $BUILD_CMD --platform web
         elif [ "$PLATFORM" = "ios" ]; then
-          ${{ inputs.build-command }} --platform ios
+          $BUILD_CMD --platform ios
         elif [ "$PLATFORM" = "android" ]; then
-          ${{ inputs.build-command }} --platform android
+          $BUILD_CMD --platform android
         elif [ "$PLATFORM" = "desktop" ]; then
-          ${{ inputs.build-command }} --platform desktop
+          $BUILD_CMD --platform desktop
         elif [ "$PLATFORM" = "all" ]; then
-          ${{ inputs.build-command }} --platform web
-          ${{ inputs.build-command }} --platform ios
-          ${{ inputs.build-command }} --platform android
-          ${{ inputs.build-command }} --platform desktop
+          $BUILD_CMD --platform web
+          $BUILD_CMD --platform ios
+          $BUILD_CMD --platform android
+          $BUILD_CMD --platform desktop
         else
           # Default behavior
           ${{ inputs.build-command }}
+        fi
+
+        # Check if --release is already in the build command
+        if [[ "$BUILD_CMD" != *"--release"* ]]; then
+          BUILD_CMD="$BUILD_CMD --release"
         fi
