@@ -161,11 +161,6 @@ jobs:
           echo "## Changes" >> release_notes.md
           cat changes.txt >> release_notes.md
           echo "" >> release_notes.md
-          echo "## Commit Message Conventions" >> release_notes.md
-          echo "- breaking change: or major: - Major version bump (x.0.0)" >> release_notes.md
-          echo "- feat: or minor: - Minor version bump (0.x.0)" >> release_notes.md
-          echo "- Any other prefix - Patch version bump (0.0.x)" >> release_notes.md
-          echo "" >> release_notes.md
           echo "For full changes, see the [commit history](https://github.com/${{ github.repository }}/commits/$NEW_VERSION)" >> release_notes.md
           
           # Create the release
