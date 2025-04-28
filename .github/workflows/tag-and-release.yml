@@ -156,7 +156,7 @@ jobs:
           echo -e "$CHANGES" > changes.txt
           
           # Create release notes file
-          echo "# Release $NEW_VERSION ($BUMP_TYPE bump)" > release_notes.md
+          echo "# Release $NEW_VERSION" > release_notes.md
           echo "" >> release_notes.md
           echo "## Changes" >> release_notes.md
           cat changes.txt >> release_notes.md
