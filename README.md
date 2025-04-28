@@ -162,8 +162,7 @@ jobs:
       - name: Build Dioxus iOS App
         uses: wizardsupreme/dioxus-action@v0
         with:
-          ios-support: 'true'
-          build-command: 'dx build --release --features ios'
+          build-command: 'dx build --platform ios --release --features ios'
 ```
 
 ## Releases
