@@ -30,6 +30,12 @@ steps:
       
       # Optional: Enable/disable caching (default: true)
       cache: 'true'
+      
+      # Optional: Target platform (default: web)
+      platform: 'web'
+      
+      # Optional: Cargo features to enable
+      features: 'web,ssr'
 ```
 
 ## Inputs
@@ -37,11 +43,81 @@ steps:
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `rust-version` | Rust version to use | No | `stable` |
-| `cli-version` | Dioxus CLI version, tag, or branch name | No | `latest` |
-| `cli-repo` | GitHub repository to install Dioxus CLI from | No | `dioxuslabs/dioxus` |
+| `version` | Dioxus CLI version, tag, or branch name | No | `latest` |
+| `repo` | GitHub repository to install Dioxus CLI from | No | `dioxuslabs/dioxus` |
 | `build-command` | Custom build command | No | `dx build --release` |
 | `working-directory` | Directory containing the Dioxus project | No | `.` |
 | `cache` | Whether to cache dependencies | No | `true` |
+| `platform` | Target platform (web, ios, android, desktop, or all) | No | `web` |
+| `features` | Cargo features to enable (comma-separated) | No | `` |
+
+## Platform-Specific Requirements
+
+Different platforms have different requirements:
+
+- **Web**: Works on any runner (ubuntu-latest recommended)
+- **iOS**: Requires macOS runner (`runs-on: macos-latest`)
+- **Android**: Works on any runner, but requires additional setup
+- **Desktop**: Works on the runner matching your target OS
+
+## Example Platform-Specific Workflows
+
+### Web (Default)
+```yaml
+- name: Build Dioxus Web App
+  uses: wizardsupreme/dioxus-action@v0
+  with:
+    platform: 'web'
+```
+OR
+```yaml
+- name: Build Dioxus Web App
+  uses: wizardsupreme/dioxus-action@v0
+```
+
+### iOS
+```yaml
+jobs:
+  build:
+    runs-on: macos-latest  # iOS builds require macOS runner
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Dioxus iOS App
+        uses: wizardsupreme/dioxus-action@v0
+        with:
+          platform: 'ios'
+```
+
+### Android
+```yaml
+- name: Build Dioxus Android App
+  uses: wizardsupreme/dioxus-action@v0
+  with:
+    platform: 'android'
+```
+
+### Desktop
+```yaml
+- name: Build Dioxus Desktop App
+  uses: wizardsupreme/dioxus-action@v0
+  with:
+    platform: 'desktop'
+```
+
+### All Platforms
+```yaml
+jobs:
+  build:
+    runs-on: macos-latest  # Required for iOS builds
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Dioxus for All Platforms
+        uses: wizardsupreme/dioxus-action@v0
+        with:
+          platform: 'all'
+```
 
 ## Example Workflow
 
@@ -61,11 +137,32 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Build Dioxus App
-        uses: wizardsupreme/dioxus-action@v1
+        uses: wizardsupreme/dioxus-action@v0
         with:
           repo: 'wizardsupreme/dioxus'
           version: 'feature-branch'
           cache: 'true'
+```
+
+## Example iOS Workflow
+
+```yaml
+name: Build Dioxus iOS App
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest  # iOS builds require macOS runner
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Dioxus iOS App
+        uses: wizardsupreme/dioxus-action@v0
+        with:
+          build-command: 'dx build --platform ios --release --features ios'
 ```
 
 ## Releases

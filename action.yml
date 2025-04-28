@@ -25,6 +25,14 @@ inputs:
     description: 'Whether to cache dependencies (true/false)'
     required: false
     default: 'true'
+  platform:
+    description: 'Target platform (web, ios, android, desktop, or all)'
+    required: false
+    default: 'web'
+  features:
+    description: 'Cargo features to enable (comma-separated)'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -94,7 +102,61 @@ runs:
         curl -L https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-linux.tar.gz | tar xz
         sudo cp binaryen-version_111/bin/wasm-opt /usr/local/bin/
 
+    - name: Setup platform-specific targets
+      shell: bash
+      run: |
+        PLATFORM="${{ inputs.platform }}"
+        
+        # Setup targets based on platform
+        if [ "$PLATFORM" = "ios" ] || [ "$PLATFORM" = "all" ]; then
+          echo "Setting up iOS target"
+          rustup target add aarch64-apple-ios
+        fi
+        
+        if [ "$PLATFORM" = "android" ] || [ "$PLATFORM" = "all" ]; then
+          echo "Setting up Android target"
+          rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android
+        fi
+        
+        if [ "$PLATFORM" = "web" ] || [ "$PLATFORM" = "all" ]; then
+          echo "Web target already set up (wasm32-unknown-unknown)"
+        fi
+
+    # Build for the specified platform
     - name: Build Dioxus App
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: ${{ inputs.build-command }}
+      run: |
+        PLATFORM="${{ inputs.platform }}"
+        BUILD_CMD="${{ inputs.build-command }}"
+        FEATURES="${{ inputs.features }}"
+        
+        if [ "$PLATFORM" = "web" ]; then
+          $BUILD_CMD --platform web
+        elif [ "$PLATFORM" = "ios" ]; then
+          $BUILD_CMD --platform ios
+        elif [ "$PLATFORM" = "android" ]; then
+          $BUILD_CMD --platform android
+        elif [ "$PLATFORM" = "desktop" ]; then
+          $BUILD_CMD --platform desktop
+        elif [ "$PLATFORM" = "all" ]; then
+          $BUILD_CMD --platform web
+          $BUILD_CMD --platform ios
+          $BUILD_CMD --platform android
+          $BUILD_CMD --platform desktop
+        else
+          # Default behavior
+          ${{ inputs.build-command }}
+        fi
+
+        # Check if --release is already in the build command
+        if [[ "$BUILD_CMD" != *"--release"* ]]; then
+          BUILD_CMD="$BUILD_CMD --release"
+        fi
+        
+        # Add features if specified
+        if [ -n "$FEATURES" ]; then
+          if [[ "$BUILD_CMD" != *"--features"* ]]; then
+            BUILD_CMD="$BUILD_CMD --features $FEATURES"
+          fi
+        fi
