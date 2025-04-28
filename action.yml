@@ -88,6 +88,12 @@ runs:
           fi
         fi
 
+    - name: Install wasm-opt
+      shell: bash
+      run: |
+        curl -L https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-linux.tar.gz | tar xz
+        sudo cp binaryen-version_111/bin/wasm-opt /usr/local/bin/
+
     - name: Build Dioxus App
       shell: bash
       working-directory: ${{ inputs.working-directory }}
