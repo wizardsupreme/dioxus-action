@@ -56,8 +56,18 @@ jobs:
           # Remove 'v' prefix for version calculation
           VERSION=${LATEST_TAG#v}
           
+          # Ensure version is valid, default to 0.0.0 if not
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VERSION="0.0.0"
+          fi
+          
           # Split version into components
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          
+          # Ensure components are valid integers
+          MAJOR=${MAJOR//[!0-9]/0}
+          MINOR=${MINOR//[!0-9]/0}
+          PATCH=${PATCH//[!0-9]/0}
           
           # Increment version based on bump type
           if [ "$BUMP_TYPE" == "major" ]; then
@@ -103,84 +113,60 @@ jobs:
           
           # Get all commits since the last tag
           LATEST_TAG="${{ steps.latest_tag.outputs.LATEST_TAG }}"
-          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s%n%b%n---")
           
-          # Extract conventional commits and their details
+          # Get commit history in a cleaner format
+          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s")
+          
+          # Process commits into a clean list
           CHANGES=""
-          CURRENT_COMMIT=""
-          COMMIT_DETAILS=""
-          READING_DETAILS=false
-          
           while IFS= read -r line; do
-            if [[ "$line" == "---" ]]; then
-              # End of a commit
-              if [[ "${CURRENT_COMMIT,,}" =~ ^(breaking change:|major:|feat:|feature:|minor:|fix:|patch:|chore:|docs:|style:|refactor:|perf:|test:|build:|ci:) ]]; then
-                # Extract commit type and standardize it
-                COMMIT_TYPE=$(echo "$CURRENT_COMMIT" | grep -io "^[a-zA-Z ]*:" | tr '[:lower:]' '[:upper:]')
-                COMMIT_MSG=$(echo "$CURRENT_COMMIT" | sed -E "s/^[a-zA-Z ]*://i" | sed -e 's/^[[:space:]]*//')
-                
-                # Format the commit message
-                FORMATTED_COMMIT="**${COMMIT_TYPE}** ${COMMIT_MSG}"
-                
-                if [[ -n "$COMMIT_DETAILS" ]]; then
-                  CHANGES+="### ${FORMATTED_COMMIT}\n${COMMIT_DETAILS}\n\n"
-                else
-                  CHANGES+="- ${FORMATTED_COMMIT}\n"
-                fi
+            # Skip merge commits
+            if [[ "$line" == "Merge "* ]]; then
+              continue
+            fi
+            
+            # Standardize commit prefixes to lowercase
+            if [[ "${line,,}" =~ ^(breaking change:|major:|feat:|feature:|minor:|fix:|patch:|chore:|docs:|style:|refactor:|perf:|test:|build:|ci:) ]]; then
+              # Extract prefix and message
+              PREFIX=$(echo "$line" | grep -io "^[a-zA-Z ]*:" | tr '[:upper:]' '[:lower:]')
+              MESSAGE=$(echo "$line" | sed -E "s/^[a-zA-Z ]*://i" | sed -e 's/^[[:space:]]*//')
+              
+              # Standardize prefixes
+              if [[ "${PREFIX,,}" == "breaking change:" ]] || [[ "${PREFIX,,}" == "major:" ]]; then
+                PREFIX="breaking change:"
+              elif [[ "${PREFIX,,}" == "feat:" ]] || [[ "${PREFIX,,}" == "feature:" ]] || [[ "${PREFIX,,}" == "minor:" ]]; then
+                PREFIX="feat:"
+              elif [[ "${PREFIX,,}" == "fix:" ]] || [[ "${PREFIX,,}" == "patch:" ]]; then
+                PREFIX="fix:"
               fi
-              CURRENT_COMMIT=""
-              COMMIT_DETAILS=""
-              READING_DETAILS=false
-            elif [[ -z "$CURRENT_COMMIT" ]]; then
-              # First line of commit is the title
-              CURRENT_COMMIT="$line"
-              READING_DETAILS=true
-            elif [[ "$READING_DETAILS" == true && -n "$line" ]]; then
-              # Subsequent non-empty lines are details
-              if [[ -n "$COMMIT_DETAILS" ]]; then
-                COMMIT_DETAILS+="  $line\n"
-              else
-                COMMIT_DETAILS="  $line\n"
-              fi
+              
+              CHANGES="${CHANGES}- ${PREFIX} ${MESSAGE}"
+            else
+              # For commits without standard prefixes
+              CHANGES="${CHANGES}- ${line}"
             fi
           done <<< "$COMMITS"
           
-          # If no conventional commits found, use the PR title
+          # If no changes found, add a generic message
           if [[ -z "$CHANGES" ]]; then
-            COMMIT_MSG=$(git log -1 --pretty=%B)
-            if [[ "$COMMIT_MSG" == *"Merge pull request"* ]]; then
-              # Extract the PR title from merge message (after the PR number line)
-              CLEAN_MSG=$(echo "$COMMIT_MSG" | grep -v "Merge pull request" | grep -v "^$" | head -n 1)
-              
-              # Check if PR title follows convention
-              if [[ "${CLEAN_MSG,,}" =~ ^(breaking change:|major:|feat:|feature:|minor:|fix:|patch:|chore:|docs:|style:|refactor:|perf:|test:|build:|ci:) ]]; then
-                # Extract commit type and standardize it
-                COMMIT_TYPE=$(echo "$CLEAN_MSG" | grep -io "^[a-zA-Z ]*:" | tr '[:lower:]' '[:upper:]')
-                COMMIT_MSG=$(echo "$CLEAN_MSG" | sed -E "s/^[a-zA-Z ]*://i" | sed -e 's/^[[:space:]]*//')
-                CHANGES="- **${COMMIT_TYPE}** ${COMMIT_MSG}\n"
-              else
-                CHANGES="- ${CLEAN_MSG}\n"
-              fi
-            else
-              CHANGES="- ${COMMIT_MSG}\n"
-            fi
+            CHANGES="- General improvements and bug fixes"
           fi
           
-          # Create release notes with commit message conventions
-          RELEASE_NOTES="Release $NEW_VERSION of Dioxus Build Action ($BUMP_TYPE bump)
+          # Write changes to a file first
+          echo "$CHANGES" > changes.txt
           
-          ## What's Changed
-          ${CHANGES}
-          ## Commit Message Conventions
-          - \`BREAKING CHANGE:\` or \`MAJOR:\` - Major version bump (x.0.0)
-          - \`FEAT:\`, \`FEATURE:\`, or \`MINOR:\` - Minor version bump (0.x.0)
-          - Any other prefix - Patch version bump (0.0.x)
+          # Create release notes file
+          echo "# Release $NEW_VERSION ($BUMP_TYPE bump)" > release_notes.md
+          echo "" >> release_notes.md
+          echo "## Changes" >> release_notes.md
+          cat changes.txt >> release_notes.md
+          echo "" >> release_notes.md
+          echo "For full changes, see the [commit history](https://github.com/${{ github.repository }}/commits/$NEW_VERSION)" >> release_notes.md
           
-          For full changes, see the [commit history](https://github.com/${{ github.repository }}/commits/$NEW_VERSION)"
-          
+          # Create the release
           gh release create $NEW_VERSION \
             --title "Release $NEW_VERSION" \
-            --notes "$RELEASE_NOTES"
+            --notes-file release_notes.md
           echo "::endgroup::"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
