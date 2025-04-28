@@ -30,6 +30,12 @@ steps:
       
       # Optional: Enable/disable caching (default: true)
       cache: 'true'
+      
+      # Optional: Target platform (default: web)
+      platform: 'web'
+      
+      # Optional: Cargo features to enable
+      features: 'web,ssr'
 ```
 
 ## Inputs
@@ -37,12 +43,13 @@ steps:
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `rust-version` | Rust version to use | No | `stable` |
-| `cli-version` | Dioxus CLI version, tag, or branch name | No | `latest` |
-| `cli-repo` | GitHub repository to install Dioxus CLI from | No | `dioxuslabs/dioxus` |
+| `version` | Dioxus CLI version, tag, or branch name | No | `latest` |
+| `repo` | GitHub repository to install Dioxus CLI from | No | `dioxuslabs/dioxus` |
 | `build-command` | Custom build command | No | `dx build --release` |
 | `working-directory` | Directory containing the Dioxus project | No | `.` |
 | `cache` | Whether to cache dependencies | No | `true` |
 | `platform` | Target platform (web, ios, android, desktop, or all) | No | `web` |
+| `features` | Cargo features to enable (comma-separated) | No | `` |
 
 ## Platform-Specific Requirements
 
