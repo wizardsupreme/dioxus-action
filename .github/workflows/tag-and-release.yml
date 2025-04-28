@@ -128,18 +128,22 @@ jobs:
           CHANGES=""
           while IFS= read -r line; do
             # Skip merge commits
-            if [[ "$line" == Merge* ]]; then
+            if [[ "$line" =~ "Merge *" ]]; then
+              echo "skipping merge lne - $line"
               continue
             fi
             
             # Standardize commit prefixes to lowercase
-            PREFIX=$(echo "$line" | grep -o "^[a-zA-Z ]*:" | tr '[:upper:]' '[:lower:]' || echo "")
-            if [[ -n "$PREFIX" ]]; then
+            if [[ "${line,,}" =~ ^(.*?:) ?]]; then
+              # Extract prefix and message
+              PREFIX=$(echo "$line" | grep -io "^[a-zA-Z ]*:" | tr '[:upper:]' '[:lower:]')
               MESSAGE=$(echo "$line" | sed -E "s/^[a-zA-Z ]*://i" | sed -e 's/^[[:space:]]*//')
-              CHANGES="${CHANGES}- ${PREFIX} ${MESSAGE}\n"
+              
+              CHANGES="${CHANGES}- ${PREFIX}: ${MESSAGE}\n"
             else
-              # For commits without standard prefixes
-              CHANGES="${CHANGES}- ${line}\n"
+              # For commits without standard prefixes - skip!
+              echo "Skipping commit without standard prefix: $line"
+              CHANGES="${CHANGES}- ${line}"
             fi
           done <<< "$COMMITS"
           
@@ -149,7 +153,7 @@ jobs:
           fi
           
           # Write changes to a file first
-          echo -e "$CHANGES" > changes.txt
+          echo "$CHANGES" > changes.txt
           
           # Create release notes file
           echo "# Release $NEW_VERSION ($BUMP_TYPE bump)" > release_notes.md
