@@ -25,10 +25,6 @@ inputs:
     description: 'Whether to cache dependencies (true/false)'
     required: false
     default: 'true'
-  ios-support:
-    description: 'Enable iOS build support'
-    required: false
-    default: 'false'
   platform:
     description: 'Target platform (web, ios, android, desktop, or all)'
     required: false
