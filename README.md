@@ -42,6 +42,70 @@ steps:
 | `build-command` | Custom build command | No | `dx build --release` |
 | `working-directory` | Directory containing the Dioxus project | No | `.` |
 | `cache` | Whether to cache dependencies | No | `true` |
+| `platform` | Target platform (web, ios, android, desktop, or all) | No | `web` |
+
+## Platform-Specific Requirements
+
+Different platforms have different requirements:
+
+- **Web**: Works on any runner (ubuntu-latest recommended)
+- **iOS**: Requires macOS runner (`runs-on: macos-latest`)
+- **Android**: Works on any runner, but requires additional setup
+- **Desktop**: Works on the runner matching your target OS
+
+## Example Platform-Specific Workflows
+
+### Web (Default)
+```yaml
+- name: Build Dioxus Web App
+  uses: wizardsupreme/dioxus-action@v1
+  with:
+    platform: 'web'
+```
+
+### iOS
+```yaml
+jobs:
+  build:
+    runs-on: macos-latest  # iOS builds require macOS runner
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Dioxus iOS App
+        uses: wizardsupreme/dioxus-action@v1
+        with:
+          platform: 'ios'
+```
+
+### Android
+```yaml
+- name: Build Dioxus Android App
+  uses: wizardsupreme/dioxus-action@v1
+  with:
+    platform: 'android'
+```
+
+### Desktop
+```yaml
+- name: Build Dioxus Desktop App
+  uses: wizardsupreme/dioxus-action@v1
+  with:
+    platform: 'desktop'
+```
+
+### All Platforms
+```yaml
+jobs:
+  build:
+    runs-on: macos-latest  # Required for iOS builds
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Dioxus for All Platforms
+        uses: wizardsupreme/dioxus-action@v1
+        with:
+          platform: 'all'
+```
 
 ## Example Workflow
 
@@ -66,6 +130,28 @@ jobs:
           repo: 'wizardsupreme/dioxus'
           version: 'feature-branch'
           cache: 'true'
+```
+
+## Example iOS Workflow
+
+```yaml
+name: Build Dioxus iOS App
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest  # iOS builds require macOS runner
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Dioxus iOS App
+        uses: wizardsupreme/dioxus-action@v1
+        with:
+          ios-support: 'true'
+          build-command: 'dx build --release --features ios'
 ```
 
 ## Releases
