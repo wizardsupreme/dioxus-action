@@ -68,6 +68,17 @@ jobs:
           cache: 'true'
 ```
 
+## Releases
+
+This action follows semantic versioning. You can use it in your workflows in several ways:
+
+- `@v1` - Use the latest release of major version 1
+- `@v1.2` - Use the latest release of version 1.2.x
+- `@v1.2.3` - Use the specific version 1.2.3
+- `@main` - Use the latest code from the main branch (may be unstable)
+
+For production use, we recommend pinning to a major version like `@v1` to automatically receive compatible bug fixes and new features.
+
 ## License
 
 Apache License 2.0
