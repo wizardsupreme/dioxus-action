@@ -133,23 +133,15 @@ jobs:
             fi
             
             # Standardize commit prefixes to lowercase
-            if [[ "${line,,}" =~ ^(breaking change:|major:|feat:|feature:|minor:|fix:|patch:|chore:|docs:|style:|refactor:|perf:|test:|build:|ci:) ]]; then
+            if [[ "${line,,}" =~ ^(.*?:) ?]]; then
               # Extract prefix and message
               PREFIX=$(echo "$line" | grep -io "^[a-zA-Z ]*:" | tr '[:upper:]' '[:lower:]')
               MESSAGE=$(echo "$line" | sed -E "s/^[a-zA-Z ]*://i" | sed -e 's/^[[:space:]]*//')
               
-              # Standardize prefixes
-              if [[ "${PREFIX,,}" == "breaking change:" ]] || [[ "${PREFIX,,}" == "major:" ]]; then
-                PREFIX="breaking change:"
-              elif [[ "${PREFIX,,}" == "feat:" ]] || [[ "${PREFIX,,}" == "feature:" ]] || [[ "${PREFIX,,}" == "minor:" ]]; then
-                PREFIX="feat:"
-              elif [[ "${PREFIX,,}" == "fix:" ]] || [[ "${PREFIX,,}" == "patch:" ]]; then
-                PREFIX="fix:"
-              fi
-              
-              CHANGES="${CHANGES}- ${PREFIX} ${MESSAGE}"
+              CHANGES="${CHANGES}- ${PREFIX}: ${MESSAGE}\n"
             else
-              # For commits without standard prefixes
+              # For commits without standard prefixes - skip!
+              echo "Skipping commit without standard prefix: $line"
               CHANGES="${CHANGES}- ${line}"
             fi
           done <<< "$COMMITS"
