@@ -128,7 +128,7 @@ jobs:
           CHANGES=""
           while IFS= read -r line; do
             # Skip merge commits
-            if [[ "$line" =~ ^Merge\ ]]; then
+            if [[ "${line}" =~ ^Merge\ (pull\ request|branch|commit) ]]; then
               echo "skipping merge line - $line"
               continue
             fi
