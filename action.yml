@@ -101,7 +101,7 @@ runs:
         fi
 
     - name: Show Dioxus CLI Version
-      if: inputs.verbose == 'true'
+      if: ${{ inputs.verbose == 'true' }}
       shell: bash
       run: |
         echo "Dioxus CLI version:"
@@ -163,9 +163,9 @@ runs:
         elif [ "$PLATFORM" = "all" ]; then
           # For "all", we'll just capture the last build output
           $BUILD_CMD --platform web 2>&1 | tee $BUILD_OUTPUT_FILE
-          $BUILD_CMD --platform ios 2>&1 | tee $BUILD_OUTPUT_FILE
-          $BUILD_CMD --platform android 2>&1 | tee $BUILD_OUTPUT_FILE
-          $BUILD_CMD --platform desktop 2>&1 | tee $BUILD_OUTPUT_FILE
+          $BUILD_CMD --platform ios 2>&1 | tee -a $BUILD_OUTPUT_FILE
+          $BUILD_CMD --platform android 2>&1 | tee -a $BUILD_OUTPUT_FILE
+          $BUILD_CMD --platform desktop 2>&1 | tee -a $BUILD_OUTPUT_FILE
         else
           # Default behavior
           ${{ inputs.build-command }} 2>&1 | tee $BUILD_OUTPUT_FILE
@@ -193,7 +193,7 @@ runs:
         rm $BUILD_OUTPUT_FILE
 
     - name: Show Build Output
-      if: inputs.verbose == 'true'
+      if: ${{ inputs.verbose == 'true' }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
