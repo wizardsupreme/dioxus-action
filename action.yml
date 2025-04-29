@@ -33,6 +33,10 @@ inputs:
     description: 'Cargo features to enable (comma-separated)'
     required: false
     default: ''
+  verbose:
+    description: 'Enable verbose output (true/false)'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -96,6 +100,13 @@ runs:
           fi
         fi
 
+    - name: Show Dioxus CLI Version
+      if: inputs.verbose == 'true'
+      shell: bash
+      run: |
+        echo "Dioxus CLI version:"
+        dx --version
+
     - name: Install wasm-opt
       shell: bash
       run: |
@@ -126,38 +137,107 @@ runs:
     # Build for the specified platform
     - name: Build Dioxus App
       shell: bash
+      id: build
       working-directory: ${{ inputs.working-directory }}
       run: |
         PLATFORM="${{ inputs.platform }}"
         BUILD_CMD="${{ inputs.build-command }}"
         FEATURES="${{ inputs.features }}"
         
+        # Create a temporary file to capture build output
+        BUILD_OUTPUT_FILE=$(mktemp)
+        
         if [ "$PLATFORM" = "web" ]; then
-          $BUILD_CMD --platform web
+          $BUILD_CMD --platform web 2>&1 | tee $BUILD_OUTPUT_FILE
         elif [ "$PLATFORM" = "ios" ]; then
-          $BUILD_CMD --platform ios
+          $BUILD_CMD --platform ios 2>&1 | tee $BUILD_OUTPUT_FILE
         elif [ "$PLATFORM" = "android" ]; then
-          $BUILD_CMD --platform android
+          $BUILD_CMD --platform android 2>&1 | tee $BUILD_OUTPUT_FILE
         elif [ "$PLATFORM" = "desktop" ]; then
-          $BUILD_CMD --platform desktop
+          $BUILD_CMD --platform desktop 2>&1 | tee $BUILD_OUTPUT_FILE
         elif [ "$PLATFORM" = "all" ]; then
-          $BUILD_CMD --platform web
-          $BUILD_CMD --platform ios
-          $BUILD_CMD --platform android
-          $BUILD_CMD --platform desktop
+          # For "all", we'll just capture the last build output
+          $BUILD_CMD --platform web 2>&1 | tee $BUILD_OUTPUT_FILE
+          $BUILD_CMD --platform ios 2>&1 | tee $BUILD_OUTPUT_FILE
+          $BUILD_CMD --platform android 2>&1 | tee $BUILD_OUTPUT_FILE
+          $BUILD_CMD --platform desktop 2>&1 | tee $BUILD_OUTPUT_FILE
         else
           # Default behavior
-          ${{ inputs.build-command }}
-        fi
-
-        # Check if --release is already in the build command
-        if [[ "$BUILD_CMD" != *"--release"* ]]; then
-          BUILD_CMD="$BUILD_CMD --release"
+          ${{ inputs.build-command }} 2>&1 | tee $BUILD_OUTPUT_FILE
         fi
         
-        # Add features if specified
-        if [ -n "$FEATURES" ]; then
-          if [[ "$BUILD_CMD" != *"--features"* ]]; then
-            BUILD_CMD="$BUILD_CMD --features $FEATURES"
+        # Extract build output paths from the build output
+        WEB_PATH=$(grep -o 'path="[^"]*"' $BUILD_OUTPUT_FILE | grep -i web | sed 's/path="//;s/"$//' | tail -1)
+        IOS_PATH=$(grep -o 'path="[^"]*"' $BUILD_OUTPUT_FILE | grep -i ios | sed 's/path="//;s/"$//' | tail -1)
+        ANDROID_PATH=$(grep -o 'path="[^"]*"' $BUILD_OUTPUT_FILE | grep -i android | sed 's/path="//;s/"$//' | tail -1)
+        DESKTOP_PATH=$(grep -o 'path="[^"]*"' $BUILD_OUTPUT_FILE | grep -i desktop | sed 's/path="//;s/"$//' | tail -1)
+        
+        # If no specific platform paths found, try to get the generic path
+        if [ -z "$WEB_PATH" ] && [ -z "$IOS_PATH" ] && [ -z "$ANDROID_PATH" ] && [ -z "$DESKTOP_PATH" ]; then
+          GENERIC_PATH=$(grep -o 'path="[^"]*"' $BUILD_OUTPUT_FILE | sed 's/path="//;s/"$//' | tail -1)
+        fi
+        
+        # Set outputs for use in the next step
+        echo "web_path=$WEB_PATH" >> $GITHUB_OUTPUT
+        echo "ios_path=$IOS_PATH" >> $GITHUB_OUTPUT
+        echo "android_path=$ANDROID_PATH" >> $GITHUB_OUTPUT
+        echo "desktop_path=$DESKTOP_PATH" >> $GITHUB_OUTPUT
+        echo "generic_path=$GENERIC_PATH" >> $GITHUB_OUTPUT
+        
+        # Clean up
+        rm $BUILD_OUTPUT_FILE
+
+    - name: Show Build Output
+      if: inputs.verbose == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "Build output directory contents:"
+        
+        # Get paths from previous step
+        WEB_PATH="${{ steps.build.outputs.web_path }}"
+        IOS_PATH="${{ steps.build.outputs.ios_path }}"
+        ANDROID_PATH="${{ steps.build.outputs.android_path }}"
+        DESKTOP_PATH="${{ steps.build.outputs.desktop_path }}"
+        GENERIC_PATH="${{ steps.build.outputs.generic_path }}"
+        
+        PLATFORM="${{ inputs.platform }}"
+        
+        if [ "$PLATFORM" = "web" ] || [ "$PLATFORM" = "all" ]; then
+          if [ -n "$WEB_PATH" ] && [ -d "$WEB_PATH" ]; then
+            echo "Web build output ($WEB_PATH):"
+            ls -la "$WEB_PATH"
+          elif [ -n "$GENERIC_PATH" ] && [ -d "$GENERIC_PATH" ]; then
+            echo "Web build output ($GENERIC_PATH):"
+            ls -la "$GENERIC_PATH"
+          else
+            echo "Web build output directory not found"
+          fi
+        fi
+        
+        if [ "$PLATFORM" = "desktop" ] || [ "$PLATFORM" = "all" ]; then
+          if [ -n "$DESKTOP_PATH" ] && [ -d "$DESKTOP_PATH" ]; then
+            echo "Desktop build output ($DESKTOP_PATH):"
+            ls -la "$DESKTOP_PATH"
+          else
+            echo "Desktop build output directory not found"
+          fi
+        fi
+        
+        if [ "$PLATFORM" = "ios" ] || [ "$PLATFORM" = "all" ]; then
+          if [ -n "$IOS_PATH" ] && [ -d "$IOS_PATH" ]; then
+            echo "iOS build output ($IOS_PATH):"
+            ls -la "$IOS_PATH"
+          else
+            echo "iOS build output directory not found"
+          fi
+        fi
+        
+        if [ "$PLATFORM" = "android" ] || [ "$PLATFORM" = "all" ]; then
+          if [ -n "$ANDROID_PATH" ] && [ -d "$ANDROID_PATH" ]; then
+            echo "Android build output ($ANDROID_PATH):"
+            ls -la "$ANDROID_PATH"
+          else
+            echo "Android build output directory not found"
           fi
         fi
