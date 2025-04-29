@@ -146,7 +146,12 @@ runs:
         
         # Create a temporary file to capture build output
         BUILD_OUTPUT_FILE=$(mktemp)
-        
+
+        # Append features to the build command if provided
+        if [ -n "$FEATURES" ]; then
+          BUILD_CMD="$BUILD_CMD --features $FEATURES"
+        fi
+
         if [ "$PLATFORM" = "web" ]; then
           $BUILD_CMD --platform web 2>&1 | tee $BUILD_OUTPUT_FILE
         elif [ "$PLATFORM" = "ios" ]; then
