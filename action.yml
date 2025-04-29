@@ -146,6 +146,7 @@ runs:
         
         # Create a temporary file to capture build output
         BUILD_OUTPUT_FILE=$(mktemp)
+        trap 'rm -f "$BUILD_OUTPUT_FILE"' EXIT
 
         # Append features to the build command if provided
         if [ -n "$FEATURES" ]; then
