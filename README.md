@@ -36,6 +36,9 @@ steps:
       
       # Optional: Cargo features to enable
       features: 'web,ssr'
+      
+      # Optional: Enable verbose output (default: false)
+      verbose: 'true'
 ```
 
 ## Inputs
@@ -50,6 +53,7 @@ steps:
 | `cache` | Whether to cache dependencies | No | `true` |
 | `platform` | Target platform (web, ios, android, desktop, or all) | No | `web` |
 | `features` | Cargo features to enable (comma-separated) | No | `` |
+| `verbose` | Enable verbose output (true/false) | No | `false` |
 
 ## Platform-Specific Requirements
 
@@ -69,7 +73,7 @@ Different platforms have different requirements:
   with:
     platform: 'web'
 ```
-OR
+ 
 ```yaml
 - name: Build Dioxus Web App
   uses: wizardsupreme/dioxus-action@v0
